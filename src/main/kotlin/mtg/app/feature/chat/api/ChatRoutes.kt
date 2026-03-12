@@ -23,6 +23,8 @@ import mtg.app.core.auth.requireFirebasePrincipal
 import mtg.app.core.error.ForbiddenException
 import mtg.app.core.error.ValidationException
 import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
+import mtg.app.feature.offers.domain.OfferRepository
+import mtg.app.feature.offers.domain.OfferType
 import kotlin.time.Clock
 
 @Serializable
@@ -56,6 +58,7 @@ private data class SubmitRatingRequest(
 fun Route.registerChatRoutes(
     authVerifier: FirebaseAuthVerifier,
     bridgeRepository: PostgresBridgeRepository,
+    offerRepository: OfferRepository,
 ) {
     route("/v1/chats") {
         get {
@@ -102,10 +105,15 @@ fun Route.registerChatRoutes(
             call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@patch
             val patch = call.receive<JsonObject>()
             bridgeRepository.patchChatMeta(chatId = chatId, patch = patch)
-            val closed = (patch["closed"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() == true
-            val dealStatus = (patch["dealStatus"] as? JsonPrimitive)?.content.orEmpty()
+            val updatedMeta = bridgeRepository.getChatMeta(chatId) ?: JsonObject(emptyMap())
+            val closed = (updatedMeta["closed"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() == true
+            val dealStatus = (updatedMeta["dealStatus"] as? JsonPrimitive)?.content.orEmpty()
             if (closed || dealStatus.equals("COMPLETED", ignoreCase = true)) {
                 bridgeRepository.deleteNotificationsForChat(chatId)
+                removeSellerOffersForCompletedDeal(
+                    offerRepository = offerRepository,
+                    chatMeta = updatedMeta,
+                )
             }
             call.respond(HttpStatusCode.OK)
         }
@@ -247,4 +255,25 @@ private fun buildTradeRatingKey(chatId: String, chatMeta: JsonObject): String {
 
 private fun JsonObject.stringOrEmpty(key: String): String {
     return (this[key] as? JsonPrimitive)?.content?.trim().orEmpty()
+}
+
+
+private suspend fun removeSellerOffersForCompletedDeal(
+    offerRepository: OfferRepository,
+    chatMeta: JsonObject,
+) {
+    val sellerUid = chatMeta.stringOrEmpty("sellerUid")
+    if (sellerUid.isBlank()) return
+    val targetCardId = chatMeta.stringOrEmpty("cardId")
+    val targetCardName = chatMeta.stringOrEmpty("cardName")
+    val offers = offerRepository.list(cardId = null, userId = sellerUid, type = OfferType.SELL)
+    offers.forEach { offer ->
+        val matchesCard = when {
+            targetCardId.isNotBlank() -> offer.cardId.equals(targetCardId, ignoreCase = true)
+            else -> offer.cardName.equals(targetCardName, ignoreCase = true)
+        }
+        if (matchesCard) {
+            offerRepository.deleteOwned(offer.id, sellerUid)
+        }
+    }
 }

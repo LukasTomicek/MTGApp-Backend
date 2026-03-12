@@ -26,7 +26,7 @@ class AppDependencies(
     config: ApplicationConfig,
 ) : AutoCloseable {
     private val databaseFactory = DatabaseFactory(config = config)
-    private val offerRepository: OfferRepository = PostgresOfferRepository(
+    val offerRepository: OfferRepository = PostgresOfferRepository(
         dataSource = databaseFactory.dataSource(),
     )
     private val userProfileRepository: UserProfileRepository = PostgresUserProfileRepository(

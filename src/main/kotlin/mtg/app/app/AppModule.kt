@@ -85,6 +85,7 @@ fun Application.configureApp() {
         registerChatRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
             bridgeRepository = dependencies.bridgeRepository,
+            offerRepository = dependencies.offerRepository,
         )
 
     }
