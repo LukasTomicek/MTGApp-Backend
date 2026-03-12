@@ -14,6 +14,7 @@ import kotlinx.serialization.json.put
 import mtg.app.core.auth.FirebaseAuthVerifier
 import mtg.app.core.auth.requireFirebasePrincipal
 import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
+import mtg.app.feature.bridge.infrastructure.PostgresRatingStore
 
 @Serializable
 private data class UpdateOnboardingRequest(
@@ -23,6 +24,7 @@ private data class UpdateOnboardingRequest(
 fun Route.registerUserStateRoutes(
     authVerifier: FirebaseAuthVerifier,
     bridgeRepository: PostgresBridgeRepository,
+    ratingStore: PostgresRatingStore,
 ) {
     route("/v1/users") {
         route("/me") {
@@ -52,7 +54,7 @@ fun Route.registerUserStateRoutes(
                 val chatId = call.parameters["chatId"].orEmpty()
                 call.respond(
                     buildJsonObject {
-                        put("exists", bridgeRepository.hasRatedChat(principal.uid, chatId))
+                        put("exists", ratingStore.hasRatedChat(principal.uid, chatId))
                     }
                 )
             }
@@ -61,7 +63,7 @@ fun Route.registerUserStateRoutes(
         get("/{uid}/ratings") {
             call.requireFirebasePrincipal(authVerifier)
             val uid = call.parameters["uid"].orEmpty()
-            call.respond(bridgeRepository.listReceivedRatings(uid))
+            call.respond(ratingStore.listReceivedRatings(uid))
         }
     }
 }

@@ -22,7 +22,9 @@ import mtg.app.core.auth.FirebasePrincipal
 import mtg.app.core.auth.requireFirebasePrincipal
 import mtg.app.core.error.ForbiddenException
 import mtg.app.core.error.ValidationException
-import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
+import mtg.app.feature.bridge.infrastructure.PostgresChatStore
+import mtg.app.feature.bridge.infrastructure.PostgresNotificationStore
+import mtg.app.feature.bridge.infrastructure.PostgresRatingStore
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.domain.OfferType
 import kotlin.time.Clock
@@ -57,13 +59,15 @@ private data class SubmitRatingRequest(
 
 fun Route.registerChatRoutes(
     authVerifier: FirebaseAuthVerifier,
-    bridgeRepository: PostgresBridgeRepository,
+    chatStore: PostgresChatStore,
+    notificationStore: PostgresNotificationStore,
+    ratingStore: PostgresRatingStore,
     offerRepository: OfferRepository,
 ) {
     route("/v1/chats") {
         get {
             val principal = call.requireFirebasePrincipal(authVerifier)
-            val chats = bridgeRepository.listChats()
+            val chats = chatStore.listChats()
             val filtered = linkedMapOf<String, JsonElement>()
             chats.forEach { (chatId, value) ->
                 val root = value as? JsonObject ?: return@forEach
@@ -83,7 +87,7 @@ fun Route.registerChatRoutes(
             if (principal.uid != request.buyerUid && principal.uid != request.sellerUid) {
                 throw ForbiddenException("Authenticated user must be a participant of the chat")
             }
-            val chatId = bridgeRepository.ensureChatAndArtifacts(
+            val chatId = chatStore.ensureChatAndArtifacts(
                 buyerUid = request.buyerUid,
                 buyerEmail = request.buyerEmail,
                 sellerUid = request.sellerUid,
@@ -96,20 +100,20 @@ fun Route.registerChatRoutes(
 
         get("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (_, meta) = call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@get
+            val (_, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@get
             call.respond(meta)
         }
 
         patch("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@patch
+            call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@patch
             val patch = call.receive<JsonObject>()
-            bridgeRepository.patchChatMeta(chatId = chatId, patch = patch)
-            val updatedMeta = bridgeRepository.getChatMeta(chatId) ?: JsonObject(emptyMap())
+            chatStore.patchChatMeta(chatId = chatId, patch = patch)
+            val updatedMeta = chatStore.getChatMeta(chatId) ?: JsonObject(emptyMap())
             val closed = (updatedMeta["closed"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() == true
             val dealStatus = (updatedMeta["dealStatus"] as? JsonPrimitive)?.content.orEmpty()
             if (closed || dealStatus.equals("COMPLETED", ignoreCase = true)) {
-                bridgeRepository.deleteNotificationsForChat(chatId)
+                notificationStore.deleteNotificationsForChat(chatId)
                 removeSellerOffersForCompletedDeal(
                     offerRepository = offerRepository,
                     chatMeta = updatedMeta,
@@ -120,17 +124,17 @@ fun Route.registerChatRoutes(
 
         get("/{chatId}/messages") {
             val chatId = call.parameters["chatId"].orEmpty()
-            call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@get
-            call.respond(bridgeRepository.listChatMessages(chatId))
+            call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@get
+            call.respond(chatStore.listChatMessages(chatId))
         }
 
         post("/{chatId}/messages") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, _) = call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@post
+            val (principal, _) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@post
             val request = call.receive<SendMessageRequest>()
             val text = request.text.trim()
             if (text.isBlank()) throw ValidationException("Message text is required")
-            bridgeRepository.sendMessage(
+            chatStore.sendMessage(
                 uid = principal.uid,
                 chatId = chatId,
                 senderDisplayName = request.senderDisplayName.trim().ifBlank { principal.email ?: principal.uid },
@@ -141,12 +145,12 @@ fun Route.registerChatRoutes(
 
         delete("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, meta) = call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@delete
+            val (principal, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@delete
             val counterpartUid = when (principal.uid) {
                 meta.stringOrEmpty("buyerUid") -> meta.stringOrEmpty("sellerUid")
                 else -> meta.stringOrEmpty("buyerUid")
             }
-            bridgeRepository.deleteThread(
+            chatStore.deleteThread(
                 uid = principal.uid,
                 chatId = chatId,
                 counterpartUid = counterpartUid,
@@ -156,7 +160,7 @@ fun Route.registerChatRoutes(
 
         post("/{chatId}/ratings") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, meta) = call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@post
+            val (principal, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@post
             val request = call.receive<SubmitRatingRequest>()
             val dealStatus = meta.stringOrEmpty("dealStatus")
             if (!dealStatus.equals("COMPLETED", ignoreCase = true)) {
@@ -174,7 +178,7 @@ fun Route.registerChatRoutes(
             }
 
             val tradeKey = buildTradeRatingKey(chatId = chatId, chatMeta = meta)
-            if (bridgeRepository.hasRatedChat(principal.uid, tradeKey)) {
+            if (ratingStore.hasRatedChat(principal.uid, tradeKey)) {
                 throw ValidationException("You already rated this trade")
             }
 
@@ -182,7 +186,7 @@ fun Route.registerChatRoutes(
             val normalizedComment = request.comment.trim().take(300)
             val normalizedScore = request.score.coerceIn(1, 5)
 
-            bridgeRepository.saveGivenRating(
+            ratingStore.saveGivenRating(
                 uid = principal.uid,
                 chatId = tradeKey,
                 payload = buildJsonObject {
@@ -194,7 +198,7 @@ fun Route.registerChatRoutes(
                 },
             )
 
-            bridgeRepository.saveReceivedRating(
+            ratingStore.saveReceivedRating(
                 uid = counterpartUid,
                 ratingId = "${tradeKey}_${principal.uid}",
                 payload = buildJsonObject {
@@ -206,21 +210,21 @@ fun Route.registerChatRoutes(
                 },
             )
 
-            val received = bridgeRepository.listReceivedRatings(counterpartUid)
+            val received = ratingStore.listReceivedRatings(counterpartUid)
             val scores = received.values.mapNotNull { raw ->
                 val obj = raw as? JsonObject ?: return@mapNotNull null
                 (obj["score"] as? JsonPrimitive)?.content?.toIntOrNull()
             }
             val average = if (scores.isEmpty()) 0.0 else scores.average()
-            bridgeRepository.updateUserProfileRating(
+            ratingStore.updateUserProfileRating(
                 uid = counterpartUid,
                 average = average,
                 count = scores.size,
             )
 
-            val counterpartAlreadyRatedTrade = bridgeRepository.hasRatedChat(counterpartUid, tradeKey)
+            val counterpartAlreadyRatedTrade = ratingStore.hasRatedChat(counterpartUid, tradeKey)
             if (counterpartAlreadyRatedTrade) {
-                bridgeRepository.deleteThread(
+                chatStore.deleteThread(
                     uid = principal.uid,
                     chatId = chatId,
                     counterpartUid = counterpartUid,
@@ -234,12 +238,12 @@ fun Route.registerChatRoutes(
 
 private suspend fun ApplicationCall.requireChatParticipant(
     authVerifier: FirebaseAuthVerifier,
-    bridgeRepository: PostgresBridgeRepository,
+    chatStore: PostgresChatStore,
     chatId: String,
 ): Pair<FirebasePrincipal, JsonObject>? {
     val principal = requireFirebasePrincipal(authVerifier)
     if (chatId.isBlank()) throw ValidationException("Chat id is required")
-    val meta = bridgeRepository.getChatMeta(chatId)
+    val meta = chatStore.getChatMeta(chatId)
     if (meta == null) {
         respond(HttpStatusCode.NotFound)
         return null
@@ -265,7 +269,6 @@ private fun buildTradeRatingKey(chatId: String, chatMeta: JsonObject): String {
 private fun JsonObject.stringOrEmpty(key: String): String {
     return (this[key] as? JsonPrimitive)?.content?.trim().orEmpty()
 }
-
 
 private suspend fun removeSellerOffersForCompletedDeal(
     offerRepository: OfferRepository,

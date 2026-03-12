@@ -5,6 +5,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
+import mtg.app.feature.bridge.infrastructure.PostgresChatStore
+import mtg.app.feature.bridge.infrastructure.PostgresNotificationStore
 import mtg.app.feature.offers.domain.Offer
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.domain.OfferType
@@ -15,6 +17,8 @@ import kotlin.math.pow
 class SyncMatchNotificationsUseCase(
     private val offerRepository: OfferRepository,
     private val bridgeRepository: PostgresBridgeRepository,
+    private val chatStore: PostgresChatStore,
+    private val notificationStore: PostgresNotificationStore,
     private val loadNicknames: LoadNicknamesUseCase,
 ) {
     suspend operator fun invoke(userId: String, type: MatchSyncType): Int {
@@ -73,7 +77,7 @@ class SyncMatchNotificationsUseCase(
                     val matchingBuyOffer = buyOffersByKey[sellOffer.marketKey()] ?: return@forEach
                     val cardName = sellOffer.cardName.ifBlank { "Unknown card" }
                     val buyerDisplayName = nicknames[buyerUid]?.trim().orEmpty().ifBlank { buyerUid }
-                    val chatId = bridgeRepository.ensureChatAndArtifacts(
+                    val chatId = chatStore.ensureChatAndArtifacts(
                         buyerUid = buyerUid,
                         buyerEmail = buyerDisplayName,
                         sellerUid = normalizedUserId,
@@ -85,7 +89,7 @@ class SyncMatchNotificationsUseCase(
                         sellerUid = normalizedUserId,
                         sellEntryId = sellOffer.id,
                     )
-                    bridgeRepository.upsertNotification(
+                    notificationStore.upsertNotification(
                         uid = buyerUid,
                         notificationId = notificationId,
                         payload = buildJsonObject {
@@ -117,7 +121,7 @@ class SyncMatchNotificationsUseCase(
                     val matchingSellOffer = sellOffersByKey[buyOffer.marketKey()] ?: return@forEach
                     val cardName = matchingSellOffer.cardName.ifBlank { "Unknown card" }
                     val sellerDisplayName = nicknames[sellerUid]?.trim().orEmpty().ifBlank { sellerUid }
-                    val chatId = bridgeRepository.ensureChatAndArtifacts(
+                    val chatId = chatStore.ensureChatAndArtifacts(
                         buyerUid = normalizedUserId,
                         buyerEmail = actorDisplayName,
                         sellerUid = sellerUid,
@@ -129,7 +133,7 @@ class SyncMatchNotificationsUseCase(
                         buyerUid = normalizedUserId,
                         buyEntryId = buyOffer.id,
                     )
-                    bridgeRepository.upsertNotification(
+                    notificationStore.upsertNotification(
                         uid = sellerUid,
                         notificationId = notificationId,
                         payload = buildJsonObject {

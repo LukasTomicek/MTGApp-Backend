@@ -60,6 +60,7 @@ fun Application.configureApp() {
         registerUserStateRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
             bridgeRepository = dependencies.bridgeRepository,
+            ratingStore = dependencies.ratingStore,
         )
 
         registerUserCollectionRoutes(
@@ -74,7 +75,7 @@ fun Application.configureApp() {
 
         registerUserNotificationRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
-            bridgeRepository = dependencies.bridgeRepository,
+            notificationStore = dependencies.notificationStore,
         )
 
         registerUserMarketRoutes(
@@ -84,9 +85,10 @@ fun Application.configureApp() {
 
         registerChatRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
-            bridgeRepository = dependencies.bridgeRepository,
+            chatStore = dependencies.chatStore,
+            notificationStore = dependencies.notificationStore,
+            ratingStore = dependencies.ratingStore,
             offerRepository = dependencies.offerRepository,
         )
-
     }
 }

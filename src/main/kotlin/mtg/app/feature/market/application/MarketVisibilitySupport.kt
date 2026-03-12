@@ -3,6 +3,7 @@ package mtg.app.feature.market.application
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
+import mtg.app.feature.bridge.infrastructure.PostgresChatStore
 import mtg.app.feature.offers.domain.Offer
 import mtg.app.feature.offers.domain.OfferType
 import kotlin.math.PI
@@ -10,6 +11,7 @@ import kotlin.math.pow
 
 class MarketVisibilitySupport(
     private val bridgeRepository: PostgresBridgeRepository,
+    private val chatStore: PostgresChatStore,
 ) {
     suspend fun visibleOffersForViewer(
         viewerUid: String,
@@ -40,7 +42,7 @@ class MarketVisibilitySupport(
             )
         }
 
-        val unavailableSellerMarketKeys = bridgeRepository.listChats().values.mapNotNull { raw ->
+        val unavailableSellerMarketKeys = chatStore.listChats().values.mapNotNull { raw ->
             val chatRoot = raw as? JsonObject ?: return@mapNotNull null
             val meta = chatRoot["meta"] as? JsonObject ?: return@mapNotNull null
             val status = (meta["dealStatus"] as? JsonPrimitive)?.content.orEmpty()
