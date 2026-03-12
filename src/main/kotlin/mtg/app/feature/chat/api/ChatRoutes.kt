@@ -218,6 +218,15 @@ fun Route.registerChatRoutes(
                 count = scores.size,
             )
 
+            val counterpartAlreadyRatedTrade = bridgeRepository.hasRatedChat(counterpartUid, tradeKey)
+            if (counterpartAlreadyRatedTrade) {
+                bridgeRepository.deleteThread(
+                    uid = principal.uid,
+                    chatId = chatId,
+                    counterpartUid = counterpartUid,
+                )
+            }
+
             call.respond(HttpStatusCode.OK)
         }
     }
