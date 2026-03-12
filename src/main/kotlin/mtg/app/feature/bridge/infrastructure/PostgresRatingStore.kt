@@ -6,23 +6,23 @@ import javax.sql.DataSource
 class PostgresRatingStore(
     private val dataSource: DataSource,
     private val support: PostgresDocumentStoreSupport,
-) {
-    fun hasRatedChat(uid: String, chatId: String): Boolean {
+) : TradeRatingStore {
+    override fun hasRatedChat(uid: String, chatId: String): Boolean {
         val given = support.readUserSection(uid, UserSection.GIVEN_RATINGS)
         return given[chatId] != null
     }
 
-    fun listReceivedRatings(uid: String): JsonObject = support.readUserSection(uid, UserSection.RECEIVED_RATINGS)
+    override fun listReceivedRatings(uid: String): JsonObject = support.readUserSection(uid, UserSection.RECEIVED_RATINGS)
 
-    fun saveGivenRating(uid: String, chatId: String, payload: JsonObject) {
+    override fun saveGivenRating(uid: String, chatId: String, payload: JsonObject) {
         support.upsertUserSectionEntry(uid, UserSection.GIVEN_RATINGS, chatId, payload)
     }
 
-    fun saveReceivedRating(uid: String, ratingId: String, payload: JsonObject) {
+    override fun saveReceivedRating(uid: String, ratingId: String, payload: JsonObject) {
         support.upsertUserSectionEntry(uid, UserSection.RECEIVED_RATINGS, ratingId, payload)
     }
 
-    fun updateUserProfileRating(uid: String, average: Double, count: Int) {
+    override fun updateUserProfileRating(uid: String, average: Double, count: Int) {
         val now = support.nowMillis()
         dataSource.connection.use { connection ->
             connection.prepareStatement(

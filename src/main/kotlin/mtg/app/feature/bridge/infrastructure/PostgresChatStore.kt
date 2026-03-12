@@ -11,7 +11,7 @@ class PostgresChatStore(
     private val dataSource: DataSource,
     private val support: PostgresDocumentStoreSupport,
     private val notificationStore: PostgresNotificationStore,
-) : ChatArtifactsStore {
+) : ChatArtifactsStore, ChatRouteStore {
     override fun listChats(): JsonObject {
         val entries = mutableMapOf<String, JsonElement>()
         dataSource.connection.use { connection ->
@@ -28,7 +28,7 @@ class PostgresChatStore(
         return JsonObject(entries)
     }
 
-    fun getChatMeta(chatId: String): JsonObject? {
+    override fun getChatMeta(chatId: String): JsonObject? {
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT meta FROM chat_documents WHERE chat_id = ?").use { st ->
                 st.setString(1, chatId)
@@ -54,7 +54,7 @@ class PostgresChatStore(
         }
     }
 
-    fun patchChatMeta(chatId: String, patch: JsonObject) {
+    override fun patchChatMeta(chatId: String, patch: JsonObject) {
         val current = getChatMeta(chatId) ?: JsonObject(emptyMap())
         val merged = buildJsonObject {
             current.forEach { (key, value) -> put(key, value) }
@@ -72,7 +72,7 @@ class PostgresChatStore(
         }
     }
 
-    fun listChatMessages(chatId: String): JsonObject {
+    override fun listChatMessages(chatId: String): JsonObject {
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT messages FROM chat_documents WHERE chat_id = ?").use { st ->
                 st.setString(1, chatId)
@@ -103,7 +103,7 @@ class PostgresChatStore(
         }
     }
 
-    fun deleteThread(uid: String, chatId: String, counterpartUid: String) {
+    override fun deleteThread(uid: String, chatId: String, counterpartUid: String) {
         deleteChatMeta(chatId)
         support.deleteUserSectionEntry(uid, UserSection.MATCHES, chatId)
         if (counterpartUid.isNotBlank()) {
@@ -173,7 +173,7 @@ class PostgresChatStore(
         return chatId
     }
 
-    fun sendMessage(
+    override fun sendMessage(
         uid: String,
         chatId: String,
         senderDisplayName: String,

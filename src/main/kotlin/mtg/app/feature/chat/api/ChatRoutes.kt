@@ -22,9 +22,9 @@ import mtg.app.core.auth.FirebasePrincipal
 import mtg.app.core.auth.requireFirebasePrincipal
 import mtg.app.core.error.ForbiddenException
 import mtg.app.core.error.ValidationException
-import mtg.app.feature.bridge.infrastructure.PostgresChatStore
-import mtg.app.feature.bridge.infrastructure.PostgresNotificationStore
-import mtg.app.feature.bridge.infrastructure.PostgresRatingStore
+import mtg.app.feature.bridge.infrastructure.ChatRouteStore
+import mtg.app.feature.bridge.infrastructure.TradeRatingStore
+import mtg.app.feature.bridge.infrastructure.UserNotificationStore
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.domain.OfferType
 import kotlin.time.Clock
@@ -59,14 +59,15 @@ private data class SubmitRatingRequest(
 
 fun Route.registerChatRoutes(
     authVerifier: FirebaseAuthVerifier,
-    chatStore: PostgresChatStore,
-    notificationStore: PostgresNotificationStore,
-    ratingStore: PostgresRatingStore,
+    chatStore: ChatRouteStore,
+    notificationStore: UserNotificationStore,
+    ratingStore: TradeRatingStore,
     offerRepository: OfferRepository,
+    authPrincipalResolver: suspend ApplicationCall.() -> FirebasePrincipal = { requireFirebasePrincipal(authVerifier) },
 ) {
     route("/v1/chats") {
         get {
-            val principal = call.requireFirebasePrincipal(authVerifier)
+            val principal = call.authPrincipalResolver()
             val chats = chatStore.listChats()
             val filtered = linkedMapOf<String, JsonElement>()
             chats.forEach { (chatId, value) ->
@@ -82,7 +83,7 @@ fun Route.registerChatRoutes(
         }
 
         post("/ensure") {
-            val principal = call.requireFirebasePrincipal(authVerifier)
+            val principal = call.authPrincipalResolver()
             val request = call.receive<EnsureChatRequest>()
             if (principal.uid != request.buyerUid && principal.uid != request.sellerUid) {
                 throw ForbiddenException("Authenticated user must be a participant of the chat")
@@ -100,13 +101,13 @@ fun Route.registerChatRoutes(
 
         get("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (_, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@get
+            val (_, meta) = call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@get
             call.respond(meta)
         }
 
         patch("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@patch
+            call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@patch
             val patch = call.receive<JsonObject>()
             chatStore.patchChatMeta(chatId = chatId, patch = patch)
             val updatedMeta = chatStore.getChatMeta(chatId) ?: JsonObject(emptyMap())
@@ -124,13 +125,13 @@ fun Route.registerChatRoutes(
 
         get("/{chatId}/messages") {
             val chatId = call.parameters["chatId"].orEmpty()
-            call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@get
+            call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@get
             call.respond(chatStore.listChatMessages(chatId))
         }
 
         post("/{chatId}/messages") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, _) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@post
+            val (principal, _) = call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@post
             val request = call.receive<SendMessageRequest>()
             val text = request.text.trim()
             if (text.isBlank()) throw ValidationException("Message text is required")
@@ -145,7 +146,7 @@ fun Route.registerChatRoutes(
 
         delete("/{chatId}") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@delete
+            val (principal, meta) = call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@delete
             val counterpartUid = when (principal.uid) {
                 meta.stringOrEmpty("buyerUid") -> meta.stringOrEmpty("sellerUid")
                 else -> meta.stringOrEmpty("buyerUid")
@@ -160,7 +161,7 @@ fun Route.registerChatRoutes(
 
         post("/{chatId}/ratings") {
             val chatId = call.parameters["chatId"].orEmpty()
-            val (principal, meta) = call.requireChatParticipant(authVerifier, chatStore, chatId) ?: return@post
+            val (principal, meta) = call.requireChatParticipant(chatStore, authPrincipalResolver, chatId) ?: return@post
             val request = call.receive<SubmitRatingRequest>()
             val dealStatus = meta.stringOrEmpty("dealStatus")
             if (!dealStatus.equals("COMPLETED", ignoreCase = true)) {
@@ -237,11 +238,11 @@ fun Route.registerChatRoutes(
 }
 
 private suspend fun ApplicationCall.requireChatParticipant(
-    authVerifier: FirebaseAuthVerifier,
-    chatStore: PostgresChatStore,
+    chatStore: ChatRouteStore,
+    authPrincipalResolver: suspend ApplicationCall.() -> FirebasePrincipal,
     chatId: String,
 ): Pair<FirebasePrincipal, JsonObject>? {
-    val principal = requireFirebasePrincipal(authVerifier)
+    val principal = authPrincipalResolver()
     if (chatId.isBlank()) throw ValidationException("Chat id is required")
     val meta = chatStore.getChatMeta(chatId)
     if (meta == null) {

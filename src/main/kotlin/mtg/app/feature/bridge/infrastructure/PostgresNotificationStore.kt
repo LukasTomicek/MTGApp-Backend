@@ -30,7 +30,7 @@ class PostgresNotificationStore(
         support.deleteUserSectionEntry(uid, UserSection.NOTIFICATIONS, notificationId)
     }
 
-    fun deleteNotificationsForChat(chatId: String) {
+    override fun deleteNotificationsForChat(chatId: String) {
         if (chatId.isBlank()) return
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT uid, notifications FROM user_documents").use { st ->

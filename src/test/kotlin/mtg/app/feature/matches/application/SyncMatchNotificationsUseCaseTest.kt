@@ -202,6 +202,8 @@ class SyncMatchNotificationsUseCaseTest {
         override fun upsertNotification(uid: String, notificationId: String, payload: JsonObject) {
             notifications += NotificationCall(uid, notificationId, payload)
         }
+
+        override fun deleteNotificationsForChat(chatId: String) = Unit
     }
 
     private class FakeUserProfileRepository(
