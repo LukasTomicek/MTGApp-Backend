@@ -1,0 +1,1181 @@
+openapi: 3.1.0
+info:
+  title: MTG Backend API
+  version: 1.0.0
+  description: |
+    Current public API contract for the MTG Local Trade backend.
+    Firebase Authentication remains the identity provider. Protected endpoints require a Firebase ID token in the Authorization bearer header.
+
+servers:
+  - url: https://mtgapp-backend.onrender.com
+    description: Production
+  - url: http://localhost:8080
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Health
+  - name: Offers
+  - name: Market
+  - name: Matches
+  - name: Chats
+  - name: Users
+  - name: Notifications
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+      required: [status, service]
+
+    OfferType:
+      type: string
+      enum: [BUY, SELL]
+
+    OfferResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        cardId:
+          type: string
+        cardName:
+          type: string
+        cardTypeLine:
+          type: [string, 'null']
+        cardImageUrl:
+          type: [string, 'null']
+        type:
+          $ref: '#/components/schemas/OfferType'
+        price:
+          type: [number, 'null']
+        createdAt:
+          type: integer
+          format: int64
+      required: [id, userId, cardId, cardName, type, createdAt]
+
+    CreateOfferRequest:
+      type: object
+      properties:
+        cardId:
+          type: string
+        cardName:
+          type: string
+        cardTypeLine:
+          type: [string, 'null']
+        cardImageUrl:
+          type: [string, 'null']
+        type:
+          $ref: '#/components/schemas/OfferType'
+        price:
+          type: [number, 'null']
+      required: [cardId, cardName]
+
+    SyncOfferEntry:
+      type: object
+      properties:
+        cardId:
+          type: string
+        cardName:
+          type: string
+        cardTypeLine:
+          type: [string, 'null']
+        cardImageUrl:
+          type: [string, 'null']
+        price:
+          type: [number, 'null']
+      required: [cardId, cardName]
+
+    SyncOffersRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/OfferType'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncOfferEntry'
+      required: [type, entries]
+
+    SyncOffersResponse:
+      type: object
+      properties:
+        deletedCount:
+          type: integer
+        createdCount:
+          type: integer
+        unchangedCount:
+          type: integer
+      required: [deletedCount, createdCount, unchangedCount]
+
+    DeleteOfferResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+      required: [deleted]
+
+    MarketCardResponse:
+      type: object
+      properties:
+        cardId:
+          type: string
+        cardName:
+          type: string
+        cardTypeLine:
+          type: [string, 'null']
+        imageUrl:
+          type: [string, 'null']
+        offerCount:
+          type: integer
+        fromPrice:
+          type: [number, 'null']
+      required: [cardId, cardName, offerCount]
+
+    MarketSellerResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        displayName:
+          type: string
+        offerCount:
+          type: integer
+        fromPrice:
+          type: [number, 'null']
+      required: [userId, displayName, offerCount]
+
+    MatchResponse:
+      type: object
+      properties:
+        cardId:
+          type: string
+        cardName:
+          type: string
+        myType:
+          $ref: '#/components/schemas/OfferType'
+        counterpartType:
+          $ref: '#/components/schemas/OfferType'
+        counterpartUserId:
+          type: string
+        counterpartDisplayName:
+          type: string
+        myOfferCount:
+          type: integer
+        counterpartOfferCount:
+          type: integer
+        myBestPrice:
+          type: [number, 'null']
+        counterpartBestPrice:
+          type: [number, 'null']
+      required:
+        - cardId
+        - cardName
+        - myType
+        - counterpartType
+        - counterpartUserId
+        - counterpartDisplayName
+        - myOfferCount
+        - counterpartOfferCount
+
+    SyncMatchesRequest:
+      type: object
+      properties:
+        type:
+          type: [string, 'null']
+          enum: [BUY, SELL, ALL, null]
+
+    SyncMatchesResponse:
+      type: object
+      properties:
+        syncedNotifications:
+          type: integer
+      required: [syncedNotifications]
+
+    UserProfileResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+        nickname:
+          type: [string, 'null']
+      required: [userId]
+
+    UpsertProfileRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+      required: [nickname]
+
+    UpdateOnboardingRequest:
+      type: object
+      properties:
+        completed:
+          type: boolean
+      required: [completed]
+
+    BooleanFlagResponse:
+      type: object
+      additionalProperties:
+        type: boolean
+
+    JsonMap:
+      type: object
+      additionalProperties: true
+
+    EnsureChatRequest:
+      type: object
+      properties:
+        buyerUid:
+          type: string
+        buyerEmail:
+          type: string
+        sellerUid:
+          type: string
+        sellerEmail:
+          type: string
+        cardId:
+          type: string
+        cardName:
+          type: string
+      required: [buyerUid, buyerEmail, sellerUid, sellerEmail, cardId, cardName]
+
+    EnsureChatResponse:
+      type: object
+      properties:
+        chatId:
+          type: string
+      required: [chatId]
+
+    SendMessageRequest:
+      type: object
+      properties:
+        senderDisplayName:
+          type: string
+        text:
+          type: string
+      required: [senderDisplayName, text]
+
+    SubmitRatingRequest:
+      type: object
+      properties:
+        ratedUid:
+          type: string
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+      required: [ratedUid, score]
+
+    NotificationCreateRequest:
+      type: object
+      properties:
+        recipientUid:
+          type: string
+        payload:
+          $ref: '#/components/schemas/JsonMap'
+      required: [recipientUid, payload]
+
+    ChatRoot:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/JsonMap'
+      required: [meta]
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: Root status text
+      security: []
+      responses:
+        '200':
+          description: Backend root text
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Backend health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /v1/offers:
+    get:
+      tags: [Offers]
+      summary: List offers
+      description: If `userId` is provided, it must match the authenticated user.
+      parameters:
+        - in: query
+          name: cardId
+          schema:
+            type: string
+        - in: query
+          name: userId
+          schema:
+            type: string
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/OfferType'
+      responses:
+        '200':
+          description: Matching offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OfferResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Offers]
+      summary: Create one offer for the authenticated user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOfferRequest'
+      responses:
+        '201':
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/offers/me:
+    get:
+      tags: [Offers]
+      summary: List own offers
+      parameters:
+        - in: query
+          name: cardId
+          schema:
+            type: string
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/OfferType'
+      responses:
+        '200':
+          description: Authenticated user's offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OfferResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Offers]
+      summary: Sync own offers for one offer type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncOffersRequest'
+      responses:
+        '200':
+          description: Sync summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncOffersResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/offers/{id}:
+    delete:
+      tags: [Offers]
+      summary: Delete own offer by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Offer deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteOfferResponse'
+        '404':
+          description: Offer not found or not owned by caller
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteOfferResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/market/cards:
+    get:
+      tags: [Market]
+      summary: List visible market cards for authenticated user
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 0
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/OfferType'
+      responses:
+        '200':
+          description: Visible market card summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketCardResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/market/sellers:
+    get:
+      tags: [Market]
+      summary: List visible sellers for a given card
+      parameters:
+        - in: query
+          name: cardId
+          schema:
+            type: string
+        - in: query
+          name: cardName
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Visible sellers sorted by lowest price first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MarketSellerResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/market/map-pins:
+    get:
+      tags: [Market]
+      summary: List marketplace map pins grouped by user
+      responses:
+        '200':
+          description: Map pins keyed by user id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/matches:
+    get:
+      tags: [Matches]
+      summary: Load authenticated user's matches
+      responses:
+        '200':
+          description: Match summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MatchResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/matches/sync:
+    post:
+      tags: [Matches]
+      summary: Regenerate match notifications for authenticated user
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncMatchesRequest'
+      responses:
+        '200':
+          description: Match sync summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncMatchesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/chats:
+    get:
+      tags: [Chats]
+      summary: List chats visible to authenticated user
+      responses:
+        '200':
+          description: Chats keyed by chat id
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/ChatRoot'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/chats/ensure:
+    post:
+      tags: [Chats]
+      summary: Ensure chat exists for buyer, seller and card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnsureChatRequest'
+      responses:
+        '200':
+          description: Chat ensured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnsureChatResponse'
+        '403':
+          description: Authenticated user is not one of the participants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/chats/{chatId}:
+    get:
+      tags: [Chats]
+      summary: Get chat meta
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat meta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+    patch:
+      tags: [Chats]
+      summary: Patch chat meta
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JsonMap'
+      responses:
+        '200':
+          description: Chat updated
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+    delete:
+      tags: [Chats]
+      summary: Delete chat thread for both participants
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Chat deleted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+
+  /v1/chats/{chatId}/messages:
+    get:
+      tags: [Chats]
+      summary: Get chat messages map
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages keyed by message id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+    post:
+      tags: [Chats]
+      summary: Send one message to a chat
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '200':
+          description: Message sent
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+
+  /v1/chats/{chatId}/ratings:
+    post:
+      tags: [Chats]
+      summary: Submit trade rating for the chat counterpart
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRatingRequest'
+      responses:
+        '200':
+          description: Rating submitted
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Chat not found
+
+  /v1/users/profile/{userId}:
+    get:
+      tags: [Users]
+      summary: Public profile lookup by user id
+      security: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+
+  /v1/users/me/profile:
+    get:
+      tags: [Users]
+      summary: Load authenticated user's profile
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Users]
+      summary: Upsert authenticated user's nickname
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertProfileRequest'
+      responses:
+        '200':
+          description: Profile updated
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/users/me/collection:
+    get:
+      tags: [Users]
+      summary: Get authenticated user's collection map
+      responses:
+        '200':
+          description: Collection keyed by entry id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+    delete:
+      tags: [Users]
+      summary: Clear authenticated user's collection
+      responses:
+        '200':
+          description: Collection cleared
+
+  /v1/users/me/collection/{entryId}:
+    put:
+      tags: [Users]
+      summary: Upsert one collection entry
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JsonMap'
+      responses:
+        '200':
+          description: Entry upserted
+    delete:
+      tags: [Users]
+      summary: Delete one collection entry
+      parameters:
+        - in: path
+          name: entryId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entry deleted
+
+  /v1/users/me/map-pins:
+    get:
+      tags: [Users]
+      summary: Get authenticated user's map pins
+      responses:
+        '200':
+          description: Map pins keyed by pin id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+    put:
+      tags: [Users]
+      summary: Replace authenticated user's map pins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JsonMap'
+      responses:
+        '200':
+          description: Map pins replaced
+
+  /v1/users/me/matches:
+    get:
+      tags: [Users]
+      summary: Get authenticated user's chat match artifacts
+      responses:
+        '200':
+          description: Matches keyed by chat id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+
+  /v1/users/me/onboarding:
+    get:
+      tags: [Users]
+      summary: Get onboarding completion state
+      responses:
+        '200':
+          description: Onboarding state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanFlagResponse'
+    put:
+      tags: [Users]
+      summary: Update onboarding completion state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOnboardingRequest'
+      responses:
+        '200':
+          description: Onboarding updated
+
+  /v1/users/me/ratings/given/{chatId}:
+    get:
+      tags: [Users]
+      summary: Check whether authenticated user already rated a chat/trade key
+      parameters:
+        - in: path
+          name: chatId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exists flag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanFlagResponse'
+
+  /v1/users/{uid}/ratings:
+    get:
+      tags: [Users]
+      summary: Get received ratings for a user
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ratings keyed by rating id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+
+  /v1/users/{uid}/sell-offers:
+    get:
+      tags: [Users]
+      summary: Get public sell offers map for a user
+      parameters:
+        - in: path
+          name: uid
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sell offers keyed by entry id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+
+  /v1/users/me/notifications:
+    get:
+      tags: [Notifications]
+      summary: Get authenticated user's notifications map
+      responses:
+        '200':
+          description: Notifications keyed by notification id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonMap'
+
+  /v1/users/me/notifications/unread:
+    get:
+      tags: [Notifications]
+      summary: Check if authenticated user has unread notifications
+      responses:
+        '200':
+          description: Unread flag
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooleanFlagResponse'
+
+  /v1/users/me/notifications/{notificationId}/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notification as read
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+
+  /v1/users/me/notifications/{notificationId}:
+    delete:
+      tags: [Notifications]
+      summary: Delete one notification
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification deleted
+
+  /v1/notifications:
+    post:
+      tags: [Notifications]
+      summary: Create or upsert one notification for a recipient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationCreateRequest'
+      responses:
+        '200':
+          description: Notification upserted
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
