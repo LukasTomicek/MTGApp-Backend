@@ -7,6 +7,7 @@ import mtg.app.core.plugins.configureMonitoring
 import mtg.app.core.plugins.configureSerialization
 import mtg.app.core.plugins.configureStatusPages
 import mtg.app.feature.chat.api.registerChatRoutes
+import mtg.app.feature.docs.api.registerDocsRoutes
 import mtg.app.feature.health.api.registerHealthRoutes
 import mtg.app.feature.market.api.registerMarketRoutes
 import mtg.app.feature.matches.api.registerMatchRoutes
@@ -30,6 +31,7 @@ fun Application.configureApp() {
 
     routing {
         registerHealthRoutes(getHealthStatus = dependencies.getHealthStatus)
+        registerDocsRoutes()
 
         registerOfferRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
