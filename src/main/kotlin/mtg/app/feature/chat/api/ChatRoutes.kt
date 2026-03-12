@@ -102,6 +102,11 @@ fun Route.registerChatRoutes(
             call.requireChatParticipant(authVerifier, bridgeRepository, chatId) ?: return@patch
             val patch = call.receive<JsonObject>()
             bridgeRepository.patchChatMeta(chatId = chatId, patch = patch)
+            val closed = (patch["closed"] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() == true
+            val dealStatus = (patch["dealStatus"] as? JsonPrimitive)?.content.orEmpty()
+            if (closed || dealStatus.equals("COMPLETED", ignoreCase = true)) {
+                bridgeRepository.deleteNotificationsForChat(chatId)
+            }
             call.respond(HttpStatusCode.OK)
         }
 

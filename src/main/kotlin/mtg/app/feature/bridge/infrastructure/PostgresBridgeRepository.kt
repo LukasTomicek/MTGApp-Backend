@@ -60,6 +60,29 @@ class PostgresBridgeRepository(
         deleteUserSectionEntry(uid, UserSection.NOTIFICATIONS, notificationId)
     }
 
+
+    suspend fun deleteNotificationsForChat(chatId: String) {
+        if (chatId.isBlank()) return
+        dataSource.connection.use { connection ->
+            connection.prepareStatement("SELECT uid, notifications FROM user_documents").use { st ->
+                st.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        val uid = rs.getString("uid")
+                        val notifications = parseJsonObject(rs.getString("notifications"))
+                        val filtered = notifications.filterValues { value ->
+                            val obj = value as? JsonObject ?: return@filterValues true
+                            val linkedChatId = (obj["chatId"] as? JsonPrimitive)?.content?.trim().orEmpty()
+                            linkedChatId != chatId
+                        }
+                        if (filtered.size != notifications.size) {
+                            writeUserSection(uid, UserSection.NOTIFICATIONS, JsonObject(filtered))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     suspend fun hasUnreadNotifications(uid: String): Boolean {
         return readUserSection(uid, UserSection.NOTIFICATIONS)
             .values
