@@ -93,11 +93,12 @@ class PostgresOfferRepository(
         }
     }
 
-    override suspend fun delete(id: String): Boolean {
-        val sql = "DELETE FROM offers WHERE id = ?"
+    override suspend fun deleteOwned(id: String, ownerUserId: String): Boolean {
+        val sql = "DELETE FROM offers WHERE id = ? AND user_id = ?"
         val affectedRows = dataSource.connection.use { connection ->
             connection.prepareStatement(sql).use { statement ->
                 statement.setString(1, id)
+                statement.setString(2, ownerUserId)
                 statement.executeUpdate()
             }
         }

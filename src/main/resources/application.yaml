@@ -12,3 +12,6 @@ storage:
     password: ${?DB_PASSWORD}
     driver: org.postgresql.Driver
     maxPoolSize: 10
+
+firebase:
+  projectId: ${?FIREBASE_PROJECT_ID}

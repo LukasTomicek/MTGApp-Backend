@@ -22,7 +22,9 @@ class InMemoryOfferRepository : OfferRepository {
             .toList()
     }
 
-    override suspend fun delete(id: String): Boolean {
+    override suspend fun deleteOwned(id: String, ownerUserId: String): Boolean {
+        val offer = offers[id] ?: return false
+        if (offer.userId != ownerUserId) return false
         return offers.remove(id) != null
     }
 }

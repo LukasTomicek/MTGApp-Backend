@@ -9,33 +9,35 @@ import mtg.app.feature.users.application.LoadNicknamesUseCase
 class LoadMarketSellersUseCase(
     private val offerRepository: OfferRepository,
     private val loadNicknames: LoadNicknamesUseCase,
+    private val visibilitySupport: MarketVisibilitySupport,
 ) {
     suspend operator fun invoke(
+        viewerUid: String,
         cardId: String?,
         cardName: String?,
-        excludeUserId: String?,
     ): List<MarketSellerSummary> {
         val normalizedCardId = cardId?.trim().orEmpty().ifBlank { null }
         val normalizedCardName = cardName?.trim().orEmpty().ifBlank { null }
-        val normalizedExcludedUserId = excludeUserId?.trim().orEmpty().ifBlank { null }
 
         if (normalizedCardId == null && normalizedCardName == null) {
             throw ValidationException("cardId or cardName is required")
         }
 
-        val sellOffers = offerRepository.list(
-            cardId = null,
-            userId = null,
-            type = OfferType.SELL,
+        val visibleSellOffers = visibilitySupport.visibleOffersForViewer(
+            viewerUid = viewerUid,
+            offerType = OfferType.SELL,
+            offers = offerRepository.list(
+                cardId = null,
+                userId = null,
+                type = OfferType.SELL,
+            ),
         )
 
-        val matchedOffers = sellOffers.filter { offer ->
-            val cardMatches = when {
+        val matchedOffers = visibleSellOffers.filter { offer ->
+            when {
                 normalizedCardId != null -> offer.cardId.trim() == normalizedCardId
                 else -> offer.cardName.trim().equals(normalizedCardName, ignoreCase = true)
             }
-            val userMatches = normalizedExcludedUserId == null || offer.userId != normalizedExcludedUserId
-            cardMatches && userMatches
         }
 
         val offersByUser = matchedOffers.groupBy { it.userId }
@@ -50,6 +52,6 @@ class LoadMarketSellersUseCase(
                     fromPrice = offers.mapNotNull { it.price }.minOrNull(),
                 )
             }
-            .sortedBy { it.displayName.lowercase() }
+            .sortedBy { it.fromPrice ?: Double.MAX_VALUE }
     }
 }

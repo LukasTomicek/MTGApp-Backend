@@ -6,9 +6,11 @@ import mtg.app.feature.offers.domain.OfferRepository
 class DeleteOfferUseCase(
     private val repository: OfferRepository,
 ) {
-    suspend operator fun invoke(id: String): Boolean {
+    suspend operator fun invoke(id: String, ownerUserId: String): Boolean {
         val normalizedId = id.trim()
+        val normalizedOwnerUserId = ownerUserId.trim()
         if (normalizedId.isBlank()) throw ValidationException("id is required")
-        return repository.delete(normalizedId)
+        if (normalizedOwnerUserId.isBlank()) throw ValidationException("ownerUserId is required")
+        return repository.deleteOwned(normalizedId, normalizedOwnerUserId)
     }
 }
