@@ -2,16 +2,16 @@ package mtg.app.feature.market.application
 
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
-import mtg.app.feature.bridge.infrastructure.PostgresChatStore
+import mtg.app.feature.bridge.infrastructure.ChatArtifactsStore
+import mtg.app.feature.bridge.infrastructure.MarketplaceMapPinsStore
 import mtg.app.feature.offers.domain.Offer
 import mtg.app.feature.offers.domain.OfferType
 import kotlin.math.PI
 import kotlin.math.pow
 
 class MarketVisibilitySupport(
-    private val bridgeRepository: PostgresBridgeRepository,
-    private val chatStore: PostgresChatStore,
+    private val bridgeRepository: MarketplaceMapPinsStore,
+    private val chatStore: ChatArtifactsStore,
 ) {
     suspend fun visibleOffersForViewer(
         viewerUid: String,

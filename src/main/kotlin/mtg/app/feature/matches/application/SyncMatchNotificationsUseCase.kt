@@ -4,9 +4,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import mtg.app.feature.bridge.infrastructure.PostgresBridgeRepository
-import mtg.app.feature.bridge.infrastructure.PostgresChatStore
-import mtg.app.feature.bridge.infrastructure.PostgresNotificationStore
+import mtg.app.feature.bridge.infrastructure.ChatArtifactsStore
+import mtg.app.feature.bridge.infrastructure.MarketplaceMapPinsStore
+import mtg.app.feature.bridge.infrastructure.UserNotificationStore
 import mtg.app.feature.offers.domain.Offer
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.domain.OfferType
@@ -16,9 +16,9 @@ import kotlin.math.pow
 
 class SyncMatchNotificationsUseCase(
     private val offerRepository: OfferRepository,
-    private val bridgeRepository: PostgresBridgeRepository,
-    private val chatStore: PostgresChatStore,
-    private val notificationStore: PostgresNotificationStore,
+    private val bridgeRepository: MarketplaceMapPinsStore,
+    private val chatStore: ChatArtifactsStore,
+    private val notificationStore: UserNotificationStore,
     private val loadNicknames: LoadNicknamesUseCase,
 ) {
     suspend operator fun invoke(userId: String, type: MatchSyncType): Int {

@@ -11,41 +11,35 @@ Feature-first clean architecture backend (Ktor + PostgreSQL).
 ./gradlew run
 ```
 
-## Endpoints
+## OpenAPI
 
-### Health
-- `GET /health`
+The current API contract lives in:
 
-### Offers
-- `GET /v1/offers?type=SELL&cardId=c1&userId=u1`
-- `POST /v1/offers`
-- `DELETE /v1/offers/{id}`
+- `openapi.yaml`
 
-POST payload example:
+Recommended workflow:
 
-```json
-{
-  "userId": "u1",
-  "cardId": "c1",
-  "cardName": "Lightning Bolt",
-  "type": "SELL",
-  "price": 2.5
-}
+1. change backend route / request / response
+2. update `openapi.yaml` in the same commit
+3. validate it in Swagger Editor
+4. only then merge or deploy
+
+Production server documented in the spec:
+
+- `https://mtgapp-backend.onrender.com`
+
+## Testing
+
+Run backend tests:
+
+```bash
+./gradlew test
 ```
 
-### Market
-- `GET /v1/market/cards?query=bolt&excludeUserId=u1`
-- `GET /v1/market/sellers?cardId=c1&excludeUserId=u1`
-- `GET /v1/market/sellers?cardName=Lightning%20Bolt`
+Current first test coverage focuses on critical data flows:
 
-### Matches
-- `GET /v1/matches?userId=u1`
-
-Returns possible BUY/SELL counterpart matches for the given user grouped by card + counterpart user.
-
-### User profile
-- `PUT /v1/users/profile`
-- `GET /v1/users/profile/{userId}`
+- `SyncOffersUseCase`
+- `LoadMatchesUseCase`
 
 ## Architecture
 

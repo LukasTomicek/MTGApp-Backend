@@ -9,10 +9,10 @@ import javax.sql.DataSource
 class PostgresNotificationStore(
     private val dataSource: DataSource,
     private val support: PostgresDocumentStoreSupport,
-) {
+) : UserNotificationStore {
     fun listNotifications(uid: String): JsonObject = support.readUserSection(uid, UserSection.NOTIFICATIONS)
 
-    fun upsertNotification(uid: String, notificationId: String, payload: JsonObject) {
+    override fun upsertNotification(uid: String, notificationId: String, payload: JsonObject) {
         support.upsertUserSectionEntry(uid, UserSection.NOTIFICATIONS, notificationId, payload)
     }
 

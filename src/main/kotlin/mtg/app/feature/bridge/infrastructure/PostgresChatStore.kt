@@ -11,8 +11,8 @@ class PostgresChatStore(
     private val dataSource: DataSource,
     private val support: PostgresDocumentStoreSupport,
     private val notificationStore: PostgresNotificationStore,
-) {
-    fun listChats(): JsonObject {
+) : ChatArtifactsStore {
+    override fun listChats(): JsonObject {
         val entries = mutableMapOf<String, JsonElement>()
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT chat_id, meta FROM chat_documents").use { st ->
@@ -111,7 +111,7 @@ class PostgresChatStore(
         }
     }
 
-    fun ensureChatAndArtifacts(
+    override fun ensureChatAndArtifacts(
         buyerUid: String,
         buyerEmail: String,
         sellerUid: String,
@@ -220,7 +220,6 @@ class PostgresChatStore(
                 .replace(":", "_")
                 .replace("/", "_")
                 .replace(".", "_")
-            val messagePreview = normalizedText.take(80)
             notificationStore.upsertNotification(
                 uid = recipientUid,
                 notificationId = notificationId,
@@ -230,7 +229,7 @@ class PostgresChatStore(
                     put("sellerUid", uid)
                     put("sellerEmail", senderDisplayName)
                     put("cardName", cardName)
-                    put("message", "New message about $cardName: $messagePreview")
+                    put("message", "New message about $cardName: ${normalizedText.take(80)}")
                     put("isRead", false)
                     put("type", "new_message")
                 }

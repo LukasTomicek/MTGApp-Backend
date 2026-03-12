@@ -246,6 +246,200 @@ components:
       type: object
       additionalProperties: true
 
+    CollectionEntry:
+      type: object
+      properties:
+        entryId:
+          type: string
+        cardId:
+          type: string
+        cardName:
+          type: string
+        cardTypeLine:
+          type: [string, 'null']
+        cardImageUrl:
+          type: [string, 'null']
+        artImageUrl:
+          type: [string, 'null']
+        price:
+          type: [number, 'null']
+      required: [entryId, cardId, cardName]
+
+    CollectionMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/CollectionEntry'
+
+    MapPinItem:
+      type: object
+      properties:
+        pinId:
+          type: [string, 'null']
+        latitude:
+          type: number
+        longitude:
+          type: number
+        radiusMeters:
+          type: number
+      required: [latitude, longitude, radiusMeters]
+
+    MapPinMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/MapPinItem'
+
+    UserMapPinMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/MapPinMap'
+
+    NotificationItem:
+      type: object
+      properties:
+        notificationId:
+          type: string
+        chatId:
+          type: [string, 'null']
+        sellerUid:
+          type: [string, 'null']
+        sellerEmail:
+          type: [string, 'null']
+        sellerImageUrl:
+          type: [string, 'null']
+        cardId:
+          type: [string, 'null']
+        cardName:
+          type: [string, 'null']
+        message:
+          type: [string, 'null']
+        isRead:
+          type: boolean
+        type:
+          type: [string, 'null']
+        price:
+          type: [number, 'null']
+      required: [notificationId, isRead]
+
+    NotificationMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/NotificationItem'
+
+    RatingItem:
+      type: object
+      properties:
+        chatId:
+          type: string
+        raterUid:
+          type: [string, 'null']
+        ratedUid:
+          type: [string, 'null']
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: [string, 'null']
+        createdAt:
+          type: integer
+          format: int64
+      required: [chatId, score, createdAt]
+
+    RatingMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/RatingItem'
+
+    ChatMeta:
+      type: object
+      properties:
+        chatId:
+          type: string
+        buyerUid:
+          type: string
+        buyerEmail:
+          type: [string, 'null']
+        sellerUid:
+          type: string
+        sellerEmail:
+          type: [string, 'null']
+        cardId:
+          type: [string, 'null']
+        cardName:
+          type: [string, 'null']
+        createdAt:
+          type: integer
+          format: int64
+        closedAt:
+          type: [integer, 'null']
+          format: int64
+        closed:
+          type: [boolean, 'null']
+        dealStatus:
+          type: [string, 'null']
+        buyerConfirmed:
+          type: [boolean, 'null']
+        sellerConfirmed:
+          type: [boolean, 'null']
+        buyerCompleted:
+          type: [boolean, 'null']
+        sellerCompleted:
+          type: [boolean, 'null']
+        lastMessage:
+          type: [string, 'null']
+        lastMessageAt:
+          type: [integer, 'null']
+          format: int64
+      required: [chatId, buyerUid, sellerUid]
+      additionalProperties: true
+
+    ChatMessage:
+      type: object
+      properties:
+        messageId:
+          type: string
+        senderUid:
+          type: string
+        senderEmail:
+          type: [string, 'null']
+        text:
+          type: string
+        createdAt:
+          type: integer
+          format: int64
+      required: [messageId, senderUid, text, createdAt]
+
+    ChatMessageMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/ChatMessage'
+
+    MatchArtifact:
+      type: object
+      properties:
+        chatId:
+          type: string
+        counterpartUid:
+          type: [string, 'null']
+        counterpartEmail:
+          type: [string, 'null']
+        cardId:
+          type: [string, 'null']
+        cardName:
+          type: [string, 'null']
+        role:
+          type: [string, 'null']
+        updatedAt:
+          type: [integer, 'null']
+          format: int64
+      required: [chatId]
+      additionalProperties: true
+
+    MatchArtifactMap:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/MatchArtifact'
+
     EnsureChatRequest:
       type: object
       properties:
@@ -305,7 +499,7 @@ components:
       type: object
       properties:
         meta:
-          $ref: '#/components/schemas/JsonMap'
+          $ref: '#/components/schemas/ChatMeta'
       required: [meta]
 
 paths:
@@ -581,7 +775,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/UserMapPinMap'
         '401':
           description: Unauthorized
           content:
@@ -699,7 +893,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/ChatMeta'
         '401':
           description: Unauthorized
           content:
@@ -728,7 +922,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JsonMap'
+              $ref: '#/components/schemas/ChatMeta'
       responses:
         '200':
           description: Chat updated
@@ -789,7 +983,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/ChatMessageMap'
         '401':
           description: Unauthorized
           content:
@@ -954,7 +1148,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/CollectionMap'
     delete:
       tags: [Users]
       summary: Clear authenticated user's collection
@@ -977,7 +1171,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JsonMap'
+              $ref: '#/components/schemas/CollectionEntry'
       responses:
         '200':
           description: Entry upserted
@@ -1004,7 +1198,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/MapPinMap'
     put:
       tags: [Users]
       summary: Replace authenticated user's map pins
@@ -1013,7 +1207,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JsonMap'
+              $ref: '#/components/schemas/MapPinMap'
       responses:
         '200':
           description: Map pins replaced
@@ -1028,7 +1222,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/MatchArtifactMap'
 
   /v1/users/me/onboarding:
     get:
@@ -1088,7 +1282,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/RatingMap'
 
   /v1/users/{uid}/sell-offers:
     get:
@@ -1106,7 +1300,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/CollectionMap'
 
   /v1/users/me/notifications:
     get:
@@ -1118,7 +1312,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JsonMap'
+                $ref: '#/components/schemas/NotificationMap'
 
   /v1/users/me/notifications/unread:
     get:

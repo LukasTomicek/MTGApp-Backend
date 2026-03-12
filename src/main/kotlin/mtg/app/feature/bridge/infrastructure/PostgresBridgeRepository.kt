@@ -11,7 +11,7 @@ import javax.sql.DataSource
 class PostgresBridgeRepository(
     private val dataSource: DataSource,
     private val support: PostgresDocumentStoreSupport,
-) {
+) : MarketplaceMapPinsStore {
     fun listUserMatches(uid: String): JsonObject = support.readUserSection(uid, UserSection.MATCHES)
 
     fun listUserCollection(uid: String): JsonObject = support.readUserSection(uid, UserSection.COLLECTION)
@@ -61,7 +61,7 @@ class PostgresBridgeRepository(
         support.writeUserSection(uid, UserSection.MAP_PINS, payload)
     }
 
-    fun listMarketplaceMapPinsByUser(): JsonObject {
+    override fun listMarketplaceMapPinsByUser(): JsonObject {
         val byUser = linkedMapOf<String, JsonElement>()
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT uid, map_pins FROM user_documents").use { st ->
