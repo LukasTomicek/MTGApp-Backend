@@ -20,6 +20,10 @@ private val MIGRATIONS = listOf(
     "db/migration/V4__create_bridge_state.sql",
     "db/migration/V5__extend_bridge_state.sql",
     "db/migration/V6__extend_offers_with_card_metadata.sql",
+    "db/migration/V7__add_offer_composite_indexes.sql",
+    "db/migration/V8__create_wallet_tables.sql",
+    "db/migration/V9__drop_wallet_tables.sql",
+    "db/migration/V10__create_trade_payment_tables.sql",
 )
 
 class DatabaseFactory(
