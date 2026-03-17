@@ -146,6 +146,7 @@ class AppDependencies(
     val handleStripeWebhook = HandleStripeWebhookUseCase(
         repository = paymentsRepository,
         stripeGateway = stripeGateway,
+        chatStore = chatStore,
     )
 
     override fun close() {
