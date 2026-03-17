@@ -25,6 +25,15 @@ import mtg.app.feature.users.application.LoadUserNicknameUseCase
 import mtg.app.feature.users.application.SaveUserNicknameUseCase
 import mtg.app.feature.users.domain.UserProfileRepository
 import mtg.app.feature.users.infrastructure.PostgresUserProfileRepository
+import mtg.app.feature.wallet.application.ConfirmWalletPurchaseUseCase
+import mtg.app.feature.wallet.application.LoadWalletBalanceUseCase
+import mtg.app.feature.wallet.domain.CreditProductCatalog
+import mtg.app.feature.wallet.domain.StorePurchaseVerifier
+import mtg.app.feature.wallet.domain.WalletRepository
+import mtg.app.feature.wallet.infrastructure.AppleAppStorePurchaseVerifier
+import mtg.app.feature.wallet.infrastructure.DefaultStorePurchaseVerifier
+import mtg.app.feature.wallet.infrastructure.GooglePlayPurchaseVerifier
+import mtg.app.feature.wallet.infrastructure.PostgresWalletRepository
 
 class AppDependencies(
     config: ApplicationConfig,
@@ -38,6 +47,24 @@ class AppDependencies(
     )
     private val userProfileRepository: UserProfileRepository = PostgresUserProfileRepository(
         dataSource = dataSource,
+    )
+    private val walletProductCatalog = CreditProductCatalog()
+    private val walletRepository: WalletRepository = PostgresWalletRepository(
+        dataSource = dataSource,
+        productCatalog = walletProductCatalog,
+    )
+    private val storePurchaseVerifier: StorePurchaseVerifier = DefaultStorePurchaseVerifier(
+        googlePlayPurchaseVerifier = GooglePlayPurchaseVerifier(
+            packageName = config.propertyOrNull("billing.googlePlay.packageName")?.getString().orEmpty(),
+            serviceAccountEmail = config.propertyOrNull("billing.googlePlay.serviceAccountEmail")?.getString().orEmpty(),
+            serviceAccountPrivateKey = config.propertyOrNull("billing.googlePlay.serviceAccountPrivateKey")?.getString().orEmpty(),
+        ),
+        appleAppStorePurchaseVerifier = AppleAppStorePurchaseVerifier(
+            issuerId = config.propertyOrNull("billing.apple.issuerId")?.getString().orEmpty(),
+            keyId = config.propertyOrNull("billing.apple.keyId")?.getString().orEmpty(),
+            privateKey = config.propertyOrNull("billing.apple.privateKey")?.getString().orEmpty(),
+            bundleId = config.propertyOrNull("billing.apple.bundleId")?.getString().orEmpty(),
+        ),
     )
     val bridgeRepository = PostgresBridgeRepository(
         dataSource = dataSource,
@@ -96,6 +123,11 @@ class AppDependencies(
 
     val saveUserNickname = SaveUserNicknameUseCase(repository = userProfileRepository)
     val loadUserNickname = LoadUserNicknameUseCase(repository = userProfileRepository)
+    val loadWalletBalance = LoadWalletBalanceUseCase(repository = walletRepository)
+    val confirmWalletPurchase = ConfirmWalletPurchaseUseCase(
+        verifier = storePurchaseVerifier,
+        repository = walletRepository,
+    )
 
     override fun close() {
         databaseFactory.close()

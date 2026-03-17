@@ -18,6 +18,7 @@ import mtg.app.feature.users.api.registerUserMarketRoutes
 import mtg.app.feature.users.api.registerUserNotificationRoutes
 import mtg.app.feature.users.api.registerUserProfileRoutes
 import mtg.app.feature.users.api.registerUserStateRoutes
+import mtg.app.feature.wallet.api.registerWalletRoutes
 
 fun Application.configureApp() {
     configureSerialization()
@@ -57,6 +58,13 @@ fun Application.configureApp() {
             authVerifier = dependencies.firebaseAuthVerifier,
             saveUserNickname = dependencies.saveUserNickname,
             loadUserNickname = dependencies.loadUserNickname,
+            loadWalletBalance = dependencies.loadWalletBalance,
+        )
+
+        registerWalletRoutes(
+            authVerifier = dependencies.firebaseAuthVerifier,
+            loadWalletBalance = dependencies.loadWalletBalance,
+            confirmWalletPurchase = dependencies.confirmWalletPurchase,
         )
 
         registerUserStateRoutes(

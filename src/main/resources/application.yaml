@@ -15,3 +15,14 @@ storage:
 
 firebase:
   projectId: ${?FIREBASE_PROJECT_ID}
+
+billing:
+  googlePlay:
+    packageName: ${?GOOGLE_PLAY_PACKAGE_NAME}
+    serviceAccountEmail: ${?GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL}
+    serviceAccountPrivateKey: ${?GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY}
+  apple:
+    issuerId: ${?APPLE_APP_STORE_ISSUER_ID}
+    keyId: ${?APPLE_APP_STORE_KEY_ID}
+    privateKey: ${?APPLE_APP_STORE_PRIVATE_KEY}
+    bundleId: ${?APPLE_BUNDLE_ID}
