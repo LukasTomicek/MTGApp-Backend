@@ -77,7 +77,6 @@ class StripeHttpGateway(
                 "line_items[0][price_data][currency]" to order.currency.lowercase(),
                 "line_items[0][price_data][unit_amount]" to order.amountMinor.toString(),
                 "line_items[0][price_data][product_data][name]" to order.cardName,
-                "payment_intent_data[application_fee_amount]" to order.platformFeeMinor.toString(),
                 "payment_intent_data[transfer_group]" to order.id,
             )
         )
