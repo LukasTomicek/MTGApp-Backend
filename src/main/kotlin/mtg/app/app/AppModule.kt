@@ -12,13 +12,13 @@ import mtg.app.feature.health.api.registerHealthRoutes
 import mtg.app.feature.market.api.registerMarketRoutes
 import mtg.app.feature.matches.api.registerMatchRoutes
 import mtg.app.feature.offers.api.registerOfferRoutes
+import mtg.app.feature.payments.api.registerPaymentRoutes
 import mtg.app.feature.users.api.registerUserCollectionRoutes
 import mtg.app.feature.users.api.registerUserMapPinRoutes
 import mtg.app.feature.users.api.registerUserMarketRoutes
 import mtg.app.feature.users.api.registerUserNotificationRoutes
 import mtg.app.feature.users.api.registerUserProfileRoutes
 import mtg.app.feature.users.api.registerUserStateRoutes
-import mtg.app.feature.wallet.api.registerWalletRoutes
 
 fun Application.configureApp() {
     configureSerialization()
@@ -58,13 +58,17 @@ fun Application.configureApp() {
             authVerifier = dependencies.firebaseAuthVerifier,
             saveUserNickname = dependencies.saveUserNickname,
             loadUserNickname = dependencies.loadUserNickname,
-            loadWalletBalance = dependencies.loadWalletBalance,
         )
 
-        registerWalletRoutes(
+        registerPaymentRoutes(
             authVerifier = dependencies.firebaseAuthVerifier,
-            loadWalletBalance = dependencies.loadWalletBalance,
-            confirmWalletPurchase = dependencies.confirmWalletPurchase,
+            chatStore = dependencies.chatStore,
+            getSellerPayoutStatus = dependencies.getSellerPayoutStatus,
+            createSellerOnboardingLink = dependencies.createSellerOnboardingLink,
+            ensureTradeOrder = dependencies.ensureTradeOrder,
+            getTradeOrder = dependencies.getTradeOrder,
+            createOrderCheckoutSession = dependencies.createOrderCheckoutSession,
+            handleStripeWebhook = dependencies.handleStripeWebhook,
         )
 
         registerUserStateRoutes(
@@ -99,6 +103,7 @@ fun Application.configureApp() {
             notificationStore = dependencies.notificationStore,
             ratingStore = dependencies.ratingStore,
             offerRepository = dependencies.offerRepository,
+            releaseTradeOrderPayout = dependencies.releaseTradeOrderPayout,
         )
     }
 }

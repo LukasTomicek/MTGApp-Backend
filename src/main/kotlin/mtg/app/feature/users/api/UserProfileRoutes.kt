@@ -13,7 +13,6 @@ import mtg.app.core.auth.FirebaseAuthVerifier
 import mtg.app.core.auth.requireFirebasePrincipal
 import mtg.app.feature.users.application.LoadUserNicknameUseCase
 import mtg.app.feature.users.application.SaveUserNicknameUseCase
-import mtg.app.feature.wallet.application.LoadWalletBalanceUseCase
 
 @Serializable
 data class UpsertProfileRequest(
@@ -24,25 +23,21 @@ data class UpsertProfileRequest(
 private data class UserProfileResponse(
     val userId: String,
     val nickname: String?,
-    val credits: Int,
 )
 
 fun Route.registerUserProfileRoutes(
     authVerifier: FirebaseAuthVerifier,
     saveUserNickname: SaveUserNicknameUseCase,
     loadUserNickname: LoadUserNicknameUseCase,
-    loadWalletBalance: LoadWalletBalanceUseCase,
 ) {
     route("/v1/users/profile") {
         get("/{userId}") {
             val userId = call.parameters["userId"].orEmpty()
             val nickname = loadUserNickname(userId = userId)
-            val credits = loadWalletBalance(userId = userId)
             call.respond(
                 UserProfileResponse(
                     userId = userId,
                     nickname = nickname,
-                    credits = credits,
                 )
             )
         }
@@ -52,12 +47,10 @@ fun Route.registerUserProfileRoutes(
         get {
             val principal = call.requireFirebasePrincipal(authVerifier)
             val nickname = loadUserNickname(userId = principal.uid)
-            val credits = loadWalletBalance(userId = principal.uid)
             call.respond(
                 UserProfileResponse(
                     userId = principal.uid,
                     nickname = nickname,
-                    credits = credits,
                 )
             )
         }

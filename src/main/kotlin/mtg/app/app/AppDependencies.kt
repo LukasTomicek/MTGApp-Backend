@@ -20,20 +20,22 @@ import mtg.app.feature.offers.application.ListOffersUseCase
 import mtg.app.feature.offers.application.SyncOffersUseCase
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.infrastructure.PostgresOfferRepository
+import mtg.app.feature.payments.application.CreateOrderCheckoutSessionUseCase
+import mtg.app.feature.payments.application.CreateSellerOnboardingLinkUseCase
+import mtg.app.feature.payments.application.EnsureTradeOrderUseCase
+import mtg.app.feature.payments.application.GetSellerPayoutStatusUseCase
+import mtg.app.feature.payments.application.GetTradeOrderUseCase
+import mtg.app.feature.payments.application.HandleStripeWebhookUseCase
+import mtg.app.feature.payments.application.ReleaseTradeOrderPayoutUseCase
+import mtg.app.feature.payments.domain.PaymentsRepository
+import mtg.app.feature.payments.domain.StripeGateway
+import mtg.app.feature.payments.infrastructure.PostgresPaymentsRepository
+import mtg.app.feature.payments.infrastructure.StripeHttpGateway
 import mtg.app.feature.users.application.LoadNicknamesUseCase
 import mtg.app.feature.users.application.LoadUserNicknameUseCase
 import mtg.app.feature.users.application.SaveUserNicknameUseCase
 import mtg.app.feature.users.domain.UserProfileRepository
 import mtg.app.feature.users.infrastructure.PostgresUserProfileRepository
-import mtg.app.feature.wallet.application.ConfirmWalletPurchaseUseCase
-import mtg.app.feature.wallet.application.LoadWalletBalanceUseCase
-import mtg.app.feature.wallet.domain.CreditProductCatalog
-import mtg.app.feature.wallet.domain.StorePurchaseVerifier
-import mtg.app.feature.wallet.domain.WalletRepository
-import mtg.app.feature.wallet.infrastructure.AppleAppStorePurchaseVerifier
-import mtg.app.feature.wallet.infrastructure.DefaultStorePurchaseVerifier
-import mtg.app.feature.wallet.infrastructure.GooglePlayPurchaseVerifier
-import mtg.app.feature.wallet.infrastructure.PostgresWalletRepository
 
 class AppDependencies(
     config: ApplicationConfig,
@@ -48,23 +50,17 @@ class AppDependencies(
     private val userProfileRepository: UserProfileRepository = PostgresUserProfileRepository(
         dataSource = dataSource,
     )
-    private val walletProductCatalog = CreditProductCatalog()
-    private val walletRepository: WalletRepository = PostgresWalletRepository(
+    private val paymentsRepository: PaymentsRepository = PostgresPaymentsRepository(
         dataSource = dataSource,
-        productCatalog = walletProductCatalog,
     )
-    private val storePurchaseVerifier: StorePurchaseVerifier = DefaultStorePurchaseVerifier(
-        googlePlayPurchaseVerifier = GooglePlayPurchaseVerifier(
-            packageName = config.propertyOrNull("billing.googlePlay.packageName")?.getString().orEmpty(),
-            serviceAccountEmail = config.propertyOrNull("billing.googlePlay.serviceAccountEmail")?.getString().orEmpty(),
-            serviceAccountPrivateKey = config.propertyOrNull("billing.googlePlay.serviceAccountPrivateKey")?.getString().orEmpty(),
-        ),
-        appleAppStorePurchaseVerifier = AppleAppStorePurchaseVerifier(
-            issuerId = config.propertyOrNull("billing.apple.issuerId")?.getString().orEmpty(),
-            keyId = config.propertyOrNull("billing.apple.keyId")?.getString().orEmpty(),
-            privateKey = config.propertyOrNull("billing.apple.privateKey")?.getString().orEmpty(),
-            bundleId = config.propertyOrNull("billing.apple.bundleId")?.getString().orEmpty(),
-        ),
+    private val stripeGateway: StripeGateway = StripeHttpGateway(
+        secretKey = config.propertyOrNull("payments.stripe.secretKey")?.getString().orEmpty(),
+        webhookSecret = config.propertyOrNull("payments.stripe.webhookSecret")?.getString().orEmpty(),
+        connectRefreshUrl = config.propertyOrNull("payments.stripe.connectRefreshUrl")?.getString().orEmpty(),
+        connectReturnUrl = config.propertyOrNull("payments.stripe.connectReturnUrl")?.getString().orEmpty(),
+        checkoutSuccessUrl = config.propertyOrNull("payments.stripe.checkoutSuccessUrl")?.getString().orEmpty(),
+        checkoutCancelUrl = config.propertyOrNull("payments.stripe.checkoutCancelUrl")?.getString().orEmpty(),
+        defaultCountry = config.propertyOrNull("payments.stripe.country")?.getString().orEmpty().ifBlank { "CZ" },
     )
     val bridgeRepository = PostgresBridgeRepository(
         dataSource = dataSource,
@@ -123,10 +119,33 @@ class AppDependencies(
 
     val saveUserNickname = SaveUserNicknameUseCase(repository = userProfileRepository)
     val loadUserNickname = LoadUserNicknameUseCase(repository = userProfileRepository)
-    val loadWalletBalance = LoadWalletBalanceUseCase(repository = walletRepository)
-    val confirmWalletPurchase = ConfirmWalletPurchaseUseCase(
-        verifier = storePurchaseVerifier,
-        repository = walletRepository,
+
+    val ensureTradeOrder = EnsureTradeOrderUseCase(
+        repository = paymentsRepository,
+        offerRepository = offerRepository,
+        defaultCurrency = config.propertyOrNull("payments.defaultCurrency")?.getString().orEmpty().ifBlank { "czk" },
+        feePercent = config.propertyOrNull("payments.platformFeePercent")?.getString()?.toDoubleOrNull() ?: 10.0,
+    )
+    val getTradeOrder = GetTradeOrderUseCase(repository = paymentsRepository)
+    val getSellerPayoutStatus = GetSellerPayoutStatusUseCase(
+        repository = paymentsRepository,
+        stripeGateway = stripeGateway,
+    )
+    val createSellerOnboardingLink = CreateSellerOnboardingLinkUseCase(
+        repository = paymentsRepository,
+        stripeGateway = stripeGateway,
+    )
+    val createOrderCheckoutSession = CreateOrderCheckoutSessionUseCase(
+        repository = paymentsRepository,
+        stripeGateway = stripeGateway,
+    )
+    val releaseTradeOrderPayout = ReleaseTradeOrderPayoutUseCase(
+        repository = paymentsRepository,
+        stripeGateway = stripeGateway,
+    )
+    val handleStripeWebhook = HandleStripeWebhookUseCase(
+        repository = paymentsRepository,
+        stripeGateway = stripeGateway,
     )
 
     override fun close() {

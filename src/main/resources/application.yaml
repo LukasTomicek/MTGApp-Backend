@@ -16,13 +16,14 @@ storage:
 firebase:
   projectId: ${?FIREBASE_PROJECT_ID}
 
-billing:
-  googlePlay:
-    packageName: ${?GOOGLE_PLAY_PACKAGE_NAME}
-    serviceAccountEmail: ${?GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL}
-    serviceAccountPrivateKey: ${?GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY}
-  apple:
-    issuerId: ${?APPLE_APP_STORE_ISSUER_ID}
-    keyId: ${?APPLE_APP_STORE_KEY_ID}
-    privateKey: ${?APPLE_APP_STORE_PRIVATE_KEY}
-    bundleId: ${?APPLE_BUNDLE_ID}
+payments:
+  defaultCurrency: ${?PAYMENTS_DEFAULT_CURRENCY}
+  platformFeePercent: ${?PAYMENTS_PLATFORM_FEE_PERCENT}
+  stripe:
+    secretKey: ${?STRIPE_SECRET_KEY}
+    webhookSecret: ${?STRIPE_WEBHOOK_SECRET}
+    country: ${?STRIPE_COUNTRY}
+    connectRefreshUrl: ${?STRIPE_CONNECT_REFRESH_URL}
+    connectReturnUrl: ${?STRIPE_CONNECT_RETURN_URL}
+    checkoutSuccessUrl: ${?STRIPE_CHECKOUT_SUCCESS_URL}
+    checkoutCancelUrl: ${?STRIPE_CHECKOUT_CANCEL_URL}

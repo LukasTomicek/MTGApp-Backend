@@ -27,6 +27,7 @@ import mtg.app.feature.bridge.infrastructure.TradeRatingStore
 import mtg.app.feature.bridge.infrastructure.UserNotificationStore
 import mtg.app.feature.offers.domain.OfferRepository
 import mtg.app.feature.offers.domain.OfferType
+import mtg.app.feature.payments.application.ReleaseTradeOrderPayoutUseCase
 import kotlin.time.Clock
 
 @Serializable
@@ -63,6 +64,7 @@ fun Route.registerChatRoutes(
     notificationStore: UserNotificationStore,
     ratingStore: TradeRatingStore,
     offerRepository: OfferRepository,
+    releaseTradeOrderPayout: ReleaseTradeOrderPayoutUseCase,
     authPrincipalResolver: suspend ApplicationCall.() -> FirebasePrincipal = { requireFirebasePrincipal(authVerifier) },
 ) {
     route("/v1/chats") {
@@ -119,6 +121,7 @@ fun Route.registerChatRoutes(
                     offerRepository = offerRepository,
                     chatMeta = updatedMeta,
                 )
+                releaseTradeOrderPayout(chatId)
             }
             call.respond(HttpStatusCode.OK)
         }
