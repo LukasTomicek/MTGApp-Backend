@@ -58,6 +58,7 @@ fun Application.configureApp() {
             authVerifier = dependencies.firebaseAuthVerifier,
             saveUserNickname = dependencies.saveUserNickname,
             loadUserNickname = dependencies.loadUserNickname,
+            loadSellerBalance = dependencies.loadSellerBalance,
         )
 
         registerPaymentRoutes(
@@ -67,6 +68,9 @@ fun Application.configureApp() {
             createSellerOnboardingLink = dependencies.createSellerOnboardingLink,
             ensureTradeOrder = dependencies.ensureTradeOrder,
             getTradeOrder = dependencies.getTradeOrder,
+            listBoughtOrders = dependencies.listBoughtOrders,
+            listSoldOrders = dependencies.listSoldOrders,
+            refundOrder = dependencies.refundOrder,
             createOrderCheckoutSession = dependencies.createOrderCheckoutSession,
             handleStripeWebhook = dependencies.handleStripeWebhook,
         )

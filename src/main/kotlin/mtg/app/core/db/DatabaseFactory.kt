@@ -24,6 +24,7 @@ private val MIGRATIONS = listOf(
     "db/migration/V8__create_wallet_tables.sql",
     "db/migration/V9__drop_wallet_tables.sql",
     "db/migration/V10__create_trade_payment_tables.sql",
+    "db/migration/V11__create_payment_webhook_events.sql",
 )
 
 class DatabaseFactory(

@@ -22,6 +22,9 @@ import mtg.app.feature.payments.application.EnsureTradeOrderUseCase
 import mtg.app.feature.payments.application.GetSellerPayoutStatusUseCase
 import mtg.app.feature.payments.application.GetTradeOrderUseCase
 import mtg.app.feature.payments.application.HandleStripeWebhookUseCase
+import mtg.app.feature.payments.application.ListBoughtOrdersUseCase
+import mtg.app.feature.payments.application.ListSoldOrdersUseCase
+import mtg.app.feature.payments.application.RefundOrderUseCase
 import mtg.app.feature.payments.domain.TradeOrder
 
 @Serializable
@@ -51,6 +54,10 @@ data class TradeOrderResponse(
     val sellerAmountMinor: Long,
     val paymentStatus: String,
     val payoutStatus: String,
+    val paidAt: Long? = null,
+    val paidOutAt: Long? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
 )
 
 fun Route.registerPaymentRoutes(
@@ -60,6 +67,9 @@ fun Route.registerPaymentRoutes(
     createSellerOnboardingLink: CreateSellerOnboardingLinkUseCase,
     ensureTradeOrder: EnsureTradeOrderUseCase,
     getTradeOrder: GetTradeOrderUseCase,
+    listBoughtOrders: ListBoughtOrdersUseCase,
+    listSoldOrders: ListSoldOrdersUseCase,
+    refundOrder: RefundOrderUseCase,
     createOrderCheckoutSession: CreateOrderCheckoutSessionUseCase,
     handleStripeWebhook: HandleStripeWebhookUseCase,
 ) {
@@ -81,6 +91,26 @@ fun Route.registerPaymentRoutes(
             val principal = call.requireFirebasePrincipal(authVerifier)
             val url = createSellerOnboardingLink(userId = principal.uid, email = principal.email)
             call.respond(ExternalLinkResponse(url = url))
+        }
+    }
+
+    route("/v1/payments/orders") {
+        get("/bought") {
+            val principal = call.requireFirebasePrincipal(authVerifier)
+            call.respond(listBoughtOrders(userId = principal.uid).map { it.toResponse() })
+        }
+
+        get("/sold") {
+            val principal = call.requireFirebasePrincipal(authVerifier)
+            call.respond(listSoldOrders(userId = principal.uid).map { it.toResponse() })
+        }
+
+        post("/{orderId}/refund") {
+            val principal = call.requireFirebasePrincipal(authVerifier)
+            val orderId = call.parameters["orderId"].orEmpty()
+            if (orderId.isBlank()) throw ValidationException("orderId is required")
+            val order = refundOrder(orderId = orderId, requesterUserId = principal.uid)
+            call.respond(order.toResponse())
         }
     }
 
@@ -186,5 +216,9 @@ private fun TradeOrder.toResponse(): TradeOrderResponse {
         sellerAmountMinor = sellerAmountMinor,
         paymentStatus = paymentStatus.name,
         payoutStatus = payoutStatus.name,
+        paidAt = paidAt,
+        paidOutAt = paidOutAt,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
     )
 }

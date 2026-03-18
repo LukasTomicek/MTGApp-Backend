@@ -101,6 +101,18 @@ class StripeHttpGateway(
         return response.string("id")
     }
 
+    override suspend fun createRefund(paymentIntentId: String, reason: String): String {
+        ensureConfigured()
+        val response = postForm(
+            path = "/v1/refunds",
+            form = listOf(
+                "payment_intent" to paymentIntentId,
+                "reason" to reason,
+            )
+        )
+        return response.string("id")
+    }
+
     override fun verifyWebhookSignature(payload: String, signatureHeader: String?): Boolean {
         if (webhookSecret.isBlank()) return false
         val header = signatureHeader.orEmpty()

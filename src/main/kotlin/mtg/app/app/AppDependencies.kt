@@ -26,6 +26,10 @@ import mtg.app.feature.payments.application.EnsureTradeOrderUseCase
 import mtg.app.feature.payments.application.GetSellerPayoutStatusUseCase
 import mtg.app.feature.payments.application.GetTradeOrderUseCase
 import mtg.app.feature.payments.application.HandleStripeWebhookUseCase
+import mtg.app.feature.payments.application.ListBoughtOrdersUseCase
+import mtg.app.feature.payments.application.ListSoldOrdersUseCase
+import mtg.app.feature.payments.application.LoadSellerBalanceUseCase
+import mtg.app.feature.payments.application.RefundOrderUseCase
 import mtg.app.feature.payments.application.ReleaseTradeOrderPayoutUseCase
 import mtg.app.feature.payments.domain.PaymentsRepository
 import mtg.app.feature.payments.domain.StripeGateway
@@ -127,6 +131,10 @@ class AppDependencies(
         feePercent = config.propertyOrNull("payments.platformFeePercent")?.getString()?.toDoubleOrNull() ?: 10.0,
     )
     val getTradeOrder = GetTradeOrderUseCase(repository = paymentsRepository)
+    val listBoughtOrders = ListBoughtOrdersUseCase(repository = paymentsRepository)
+    val listSoldOrders = ListSoldOrdersUseCase(repository = paymentsRepository)
+    val refundOrder = RefundOrderUseCase(repository = paymentsRepository, stripeGateway = stripeGateway)
+    val loadSellerBalance = LoadSellerBalanceUseCase(repository = paymentsRepository)
     val getSellerPayoutStatus = GetSellerPayoutStatusUseCase(
         repository = paymentsRepository,
         stripeGateway = stripeGateway,

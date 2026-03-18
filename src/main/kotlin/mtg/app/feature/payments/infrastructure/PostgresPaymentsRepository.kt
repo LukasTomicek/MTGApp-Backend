@@ -10,6 +10,39 @@ import javax.sql.DataSource
 class PostgresPaymentsRepository(
     private val dataSource: DataSource,
 ) : PaymentsRepository {
+    override suspend fun calculateSellerBalanceMinor(userId: String): Long {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT COALESCE(SUM(seller_amount_minor), 0) AS balance_minor
+                FROM trade_orders
+                WHERE seller_user_id = ? AND payment_status = ?
+                """.trimIndent()
+            ).use { st ->
+                st.setString(1, userId)
+                st.setString(2, PaymentStatus.PAID.name)
+                st.executeQuery().use { rs ->
+                    if (!rs.next()) return 0L
+                    return rs.getLong("balance_minor")
+                }
+            }
+        }
+    }
+
+    override suspend fun findOrderById(orderId: String): TradeOrder? {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "SELECT id, chat_id, card_id, card_name, buyer_user_id, seller_user_id, amount_minor, currency, platform_fee_minor, seller_amount_minor, payment_status, payout_status, checkout_session_id, payment_intent_id, paid_at, paid_out_at, created_at, updated_at FROM trade_orders WHERE id = ?"
+            ).use { st ->
+                st.setString(1, orderId)
+                st.executeQuery().use { rs ->
+                    if (!rs.next()) return null
+                    return rs.toTradeOrder()
+                }
+            }
+        }
+    }
+
     override suspend fun findOrderByChatId(chatId: String): TradeOrder? {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -117,6 +150,56 @@ class PostgresPaymentsRepository(
         return findOrderById(orderId)
     }
 
+    override suspend fun updateOrderPaymentStatus(orderId: String, status: PaymentStatus, updatedAt: Long): TradeOrder? {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                "UPDATE trade_orders SET payment_status = ?, updated_at = ? WHERE id = ?"
+            ).use { st ->
+                st.setString(1, status.name)
+                st.setLong(2, updatedAt)
+                st.setString(3, orderId)
+                st.executeUpdate()
+            }
+        }
+        return findOrderById(orderId)
+    }
+
+    override suspend fun listOrdersBoughtByUser(userId: String): List<TradeOrder> {
+        return listOrders(column = "buyer_user_id", userId = userId)
+    }
+
+    override suspend fun listOrdersSoldByUser(userId: String): List<TradeOrder> {
+        return listOrders(column = "seller_user_id", userId = userId)
+    }
+
+    override suspend fun recordWebhookEvent(
+        eventId: String,
+        eventType: String,
+        orderId: String?,
+        payload: String,
+        receivedAt: Long,
+    ): Boolean {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                INSERT INTO payment_webhook_events (
+                    event_id, event_type, order_id, payload, received_at, processed_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (event_id) DO NOTHING
+                """.trimIndent()
+            ).use { st ->
+                st.setString(1, eventId)
+                st.setString(2, eventType)
+                st.setString(3, orderId)
+                st.setString(4, payload)
+                st.setString(4, payload)
+                st.setLong(5, receivedAt)
+                st.setLong(6, receivedAt)
+                return st.executeUpdate() > 0
+            }
+        }
+    }
+
     override suspend fun saveSellerPayoutAccount(account: SellerPayoutAccount): SellerPayoutAccount {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
@@ -156,30 +239,46 @@ class PostgresPaymentsRepository(
                 st.setString(1, userId)
                 st.executeQuery().use { rs ->
                     if (!rs.next()) return null
-                    return SellerPayoutAccount(
-                        userId = rs.getString("user_id"),
-                        provider = rs.getString("provider"),
-                        connectedAccountId = rs.getString("connected_account_id"),
-                        detailsSubmitted = rs.getBoolean("details_submitted"),
-                        chargesEnabled = rs.getBoolean("charges_enabled"),
-                        payoutsEnabled = rs.getBoolean("payouts_enabled"),
-                        createdAt = rs.getLong("created_at"),
-                        updatedAt = rs.getLong("updated_at"),
-                    )
+                    return rs.toSellerPayoutAccount()
                 }
             }
         }
     }
 
-    private fun findOrderById(orderId: String): TradeOrder? {
+    override suspend fun findSellerPayoutAccountByConnectedAccountId(accountId: String): SellerPayoutAccount? {
         dataSource.connection.use { connection ->
             connection.prepareStatement(
-                "SELECT id, chat_id, card_id, card_name, buyer_user_id, seller_user_id, amount_minor, currency, platform_fee_minor, seller_amount_minor, payment_status, payout_status, checkout_session_id, payment_intent_id, paid_at, paid_out_at, created_at, updated_at FROM trade_orders WHERE id = ?"
+                "SELECT user_id, provider, connected_account_id, details_submitted, charges_enabled, payouts_enabled, created_at, updated_at FROM seller_payout_accounts WHERE connected_account_id = ?"
             ).use { st ->
-                st.setString(1, orderId)
+                st.setString(1, accountId)
                 st.executeQuery().use { rs ->
                     if (!rs.next()) return null
-                    return rs.toTradeOrder()
+                    return rs.toSellerPayoutAccount()
+                }
+            }
+        }
+    }
+
+    private fun listOrders(column: String, userId: String): List<TradeOrder> {
+        dataSource.connection.use { connection ->
+            connection.prepareStatement(
+                """
+                SELECT id, chat_id, card_id, card_name, buyer_user_id, seller_user_id,
+                       amount_minor, currency, platform_fee_minor, seller_amount_minor,
+                       payment_status, payout_status, checkout_session_id, payment_intent_id,
+                       paid_at, paid_out_at, created_at, updated_at
+                FROM trade_orders
+                WHERE $column = ?
+                ORDER BY created_at DESC
+                """.trimIndent()
+            ).use { st ->
+                st.setString(1, userId)
+                st.executeQuery().use { rs ->
+                    val orders = mutableListOf<TradeOrder>()
+                    while (rs.next()) {
+                        orders += rs.toTradeOrder()
+                    }
+                    return orders
                 }
             }
         }
@@ -203,6 +302,19 @@ class PostgresPaymentsRepository(
             paymentIntentId = getString("payment_intent_id"),
             paidAt = getNullableLong("paid_at"),
             paidOutAt = getNullableLong("paid_out_at"),
+            createdAt = getLong("created_at"),
+            updatedAt = getLong("updated_at"),
+        )
+    }
+
+    private fun java.sql.ResultSet.toSellerPayoutAccount(): SellerPayoutAccount {
+        return SellerPayoutAccount(
+            userId = getString("user_id"),
+            provider = getString("provider"),
+            connectedAccountId = getString("connected_account_id"),
+            detailsSubmitted = getBoolean("details_submitted"),
+            chargesEnabled = getBoolean("charges_enabled"),
+            payoutsEnabled = getBoolean("payouts_enabled"),
             createdAt = getLong("created_at"),
             updatedAt = getLong("updated_at"),
         )
